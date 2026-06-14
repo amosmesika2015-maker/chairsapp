@@ -774,6 +774,9 @@ export default function AdminClient({
     }
   };
 
+  const getSiteUrl = () =>
+    process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+
   const handleSendCatalog = async () => {
     if (selectedIds.size === 0) return;
     setSending(true);
@@ -782,7 +785,7 @@ export default function AdminClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         customerIds: Array.from(selectedIds),
-        baseUrl: window.location.origin,
+        baseUrl: getSiteUrl(),
       }),
     });
     const results = await res.json();
@@ -1208,7 +1211,7 @@ export default function AdminClient({
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({
                                         customerIds: [stat.customerId],
-                                        baseUrl: window.location.origin,
+                                        baseUrl: getSiteUrl(),
                                       }),
                                     });
                                     const results = await res.json();
