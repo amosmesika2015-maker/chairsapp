@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 
 /* ─────────────────────────── constants ─────────────────────────── */
-const WA_NUMBER = "972500000000";
+const WA_NUMBER = "972549603444";
 const WA_BASE   = `https://wa.me/${WA_NUMBER}`;
 const waLink    = (msg?: string) => msg ? `${WA_BASE}?text=${encodeURIComponent(msg)}` : WA_BASE;
 
