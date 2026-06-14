@@ -481,6 +481,138 @@ function SendPanel({ results, onClose }: { results: SendResult[]; onClose: () =>
   );
 }
 
+// ─── BulkImportPanel ─────────────────────────────────────────────────────────
+
+function BulkImportPanel({
+  onDone,
+  onCancel,
+}: {
+  onDone: (customers: { id: number; name: string; phone: string; createdAt: string }[]) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<{ created: number; failed: number } | null>(null);
+
+  const preview = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      // Split by comma, pipe, tab, or last space before phone-like token
+      const parts = line.split(/[,|	]/).map((s) => s.trim());
+      if (parts.length >= 2) {
+        const phone = parts[parts.length - 1].replace(/[\s\-()]/g, "");
+        const name = parts.slice(0, parts.length - 1).join(" ");
+        return { name, phone, valid: /^\d{7,}$/.test(phone) };
+      }
+      // Try split by last whitespace group before digits
+      const m = line.match(/^(.+?)\s+([\d\s\-+()]{7,})$/);
+      if (m) {
+        const phone = m[2].replace(/[\s\-()]/g, "");
+        return { name: m[1].trim(), phone, valid: /^\d{7,}$/.test(phone) };
+      }
+      return { name: line, phone: "", valid: false };
+    });
+
+  const validRows = preview.filter((r) => r.valid);
+
+  const handleImport = async () => {
+    if (validRows.length === 0) return;
+    setImporting(true);
+    const res = await fetch("/api/customers/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customers: validRows.map(({ name, phone }) => ({ name, phone })) }),
+    });
+    const data = await res.json();
+    setResult({ created: data.created, failed: data.failed });
+    setImporting(false);
+    if (data.customers?.length > 0) onDone(data.customers);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">ייבוא לקוחות בכמות</h2>
+          <p className="text-sm text-gray-500 mt-1">הדבק רשימה — שם ומספר טלפון בכל שורה</p>
+        </div>
+
+        <div className="p-6 flex flex-col gap-4 flex-1 overflow-auto">
+          {!result ? (
+            <>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={`דוגמאות:\nדוד לוי, 0501234567\nרחל כהן | 0529876543\nמשה מזרחי 0541112233`}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-40 resize-none font-mono"
+                dir="rtl"
+              />
+
+              {preview.length > 0 && (
+                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-600 border-b border-gray-100">
+                    תצוגה מקדימה — {validRows.length} תקינים מתוך {preview.length}
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y divide-gray-50">
+                    {preview.map((row, i) => (
+                      <div key={i} className={`flex items-center gap-3 px-4 py-2 text-sm ${row.valid ? "" : "bg-red-50"}`}>
+                        <span className={row.valid ? "text-green-500" : "text-red-400"}>
+                          {row.valid ? "✓" : "✗"}
+                        </span>
+                        <span className="flex-1 font-medium text-gray-900">{row.name || "—"}</span>
+                        <span className="font-mono text-gray-500 text-xs" dir="ltr">{row.phone || "לא זוהה"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-5xl mb-4">✅</p>
+              <p className="text-xl font-bold text-gray-900">
+                יובאו {result.created} לקוחות בהצלחה
+              </p>
+              {result.failed > 0 && (
+                <p className="text-sm text-red-500 mt-1">{result.failed} שגיאות (ייתכן כפילויות)</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-gray-100 flex gap-3">
+          {!result ? (
+            <>
+              <button
+                onClick={handleImport}
+                disabled={importing || validRows.length === 0}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white py-3 rounded-xl font-semibold transition-colors text-sm"
+              >
+                {importing ? "מייבא..." : `ייבא ${validRows.length} לקוחות`}
+              </button>
+              <button
+                onClick={onCancel}
+                className="px-5 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors text-sm"
+              >
+                ביטול
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onCancel}
+              className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold text-sm"
+            >
+              סגור
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── AdminClient ──────────────────────────────────────────────────────────────
 
 export default function AdminClient({
@@ -507,6 +639,7 @@ export default function AdminClient({
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [sending, setSending] = useState(false);
   const [sendResults, setSendResults] = useState<SendResult[] | null>(null);
+  const [showBulkImport, setShowBulkImport] = useState(false);
 
   // Analytics state
   const [analytics, setAnalytics] = useState(initialAnalytics);
@@ -663,6 +796,15 @@ export default function AdminClient({
       {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onCancel={() => setShowCustomerForm(false)} />}
       {editingCustomer && <CustomerForm initial={editingCustomer} onSave={handleEditCustomer} onCancel={() => setEditingCustomer(null)} />}
       {sendResults && <SendPanel results={sendResults} onClose={() => setSendResults(null)} />}
+      {showBulkImport && (
+        <BulkImportPanel
+          onDone={(newCustomers) => {
+            setCustomers((prev) => [...newCustomers.map(c => ({ ...c, createdAt: c.createdAt })), ...prev]);
+            setShowBulkImport(false);
+          }}
+          onCancel={() => setShowBulkImport(false)}
+        />
+      )}
 
       {/* Sidebar — right */}
       <aside className="w-52 shrink-0 bg-white border-l border-gray-100 shadow-sm flex flex-col min-h-screen">
@@ -744,12 +886,20 @@ export default function AdminClient({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-gray-900">לקוחות ({customers.length})</h2>
-              <button
-                onClick={() => setShowCustomerForm(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-              >
-                + הוסף לקוח
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowBulkImport(true)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  ייבוא רשימה
+                </button>
+                <button
+                  onClick={() => setShowCustomerForm(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  + הוסף לקוח
+                </button>
+              </div>
             </div>
 
             {customers.length === 0 ? (
