@@ -624,7 +624,7 @@ export default function AdminClient({
   analytics: Analytics;
   customers: Customer[];
 }) {
-  const [activeTab, setActiveTab] = useState<"products" | "customers" | "dashboard">("dashboard");
+  const [activeTab, setActiveTab] = useState<"products" | "customers" | "dashboard" | "report">("dashboard");
 
   // Products state
   const [chairs, setChairs] = useState(initialChairs);
@@ -644,14 +644,18 @@ export default function AdminClient({
   // Analytics state
   const [analytics, setAnalytics] = useState(initialAnalytics);
 
+  // Report tab state
+  const [reportFilter, setReportFilter] = useState<"all" | "opened" | "not_opened">("all");
+  const [reportSearch, setReportSearch] = useState("");
+
   const refreshAnalytics = useCallback(async () => {
     const res = await fetch("/api/analytics");
     if (res.ok) setAnalytics(await res.json());
   }, []);
 
-  // Refresh analytics when switching to dashboard
+  // Refresh analytics when switching to dashboard or report
   useEffect(() => {
-    if (activeTab === "dashboard") refreshAnalytics();
+    if (activeTab === "dashboard" || activeTab === "report") refreshAnalytics();
   }, [activeTab, refreshAnalytics]);
 
   // ── DnD sensors ──
@@ -786,6 +790,7 @@ export default function AdminClient({
     { key: "dashboard" as const, label: "דשבורד", icon: "📊" },
     { key: "products" as const, label: "מוצרים", icon: "🪑" },
     { key: "customers" as const, label: "לקוחות", icon: "👥" },
+    { key: "report" as const, label: "דוח שליחה", icon: "📋" },
   ];
 
   return (
@@ -1039,62 +1044,188 @@ export default function AdminClient({
               )}
             </div>
 
-            {/* Campaign stats table */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-gray-50">
-                <h3 className="font-semibold text-gray-900">מעקב שליחות</h3>
-                <p className="text-xs text-gray-400 mt-0.5">פתיחת קישורים שנשלחו ללקוחות</p>
+          </div>
+        )}
+
+        {/* ── TAB: REPORT ── */}
+        {activeTab === "report" && (() => {
+          const now = Date.now();
+          const filtered = analytics.campaignStats
+            .filter((s) => {
+              if (reportFilter === "opened") return s.opened;
+              if (reportFilter === "not_opened") return !s.opened;
+              return true;
+            })
+            .filter((s) =>
+              reportSearch === "" ||
+              s.customerName.toLowerCase().includes(reportSearch.toLowerCase()) ||
+              s.phone.includes(reportSearch)
+            )
+            .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+
+          const totalNotOpened = analytics.totalSent - analytics.totalOpened;
+          const openRate = analytics.totalSent > 0
+            ? Math.round((analytics.totalOpened / analytics.totalSent) * 100)
+            : 0;
+
+          return (
+            <div className="space-y-5">
+              <h2 className="font-semibold text-gray-900">דוח שליחה</h2>
+
+              {/* Summary cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <p className="text-xs text-gray-500">נשלחו סה&quot;כ</p>
+                  <p className="text-2xl font-bold text-orange-600 mt-1">{analytics.totalSent}</p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <p className="text-xs text-gray-500">פתחו</p>
+                  <p className="text-2xl font-bold text-green-600 mt-1">{analytics.totalOpened}</p>
+                  {analytics.totalSent > 0 && (
+                    <p className="text-xs text-green-500 mt-0.5">{openRate}%</p>
+                  )}
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <p className="text-xs text-gray-500">לא פתחו</p>
+                  <p className="text-2xl font-bold text-gray-500 mt-1">{totalNotOpened}</p>
+                  {analytics.totalSent > 0 && (
+                    <p className="text-xs text-gray-400 mt-0.5">{100 - openRate}%</p>
+                  )}
+                </div>
               </div>
+
+              {/* Filter + Search */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+                  {([["all", "הכל"], ["opened", "פתחו"], ["not_opened", "לא פתחו"]] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setReportFilter(key)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        reportFilter === key
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={reportSearch}
+                  onChange={(e) => setReportSearch(e.target.value)}
+                  placeholder="חפש לפי שם..."
+                  className="flex-1 min-w-[140px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Table */}
               {analytics.campaignStats.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-sm">
-                  לא נשלחו קישורים עדיין. עבור לטאב לקוחות כדי לשלוח.
+                <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
+                  <p className="text-4xl mb-3">📭</p>
+                  <p className="text-gray-500 mb-1">טרם נשלחו קישורים</p>
+                  <p className="text-xs text-gray-400">עבור לטאב לקוחות, בחר לקוחות ולחץ &quot;שלח קטלוג&quot;</p>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm">
+                  אין תוצאות לפילטר הנוכחי
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-xs text-gray-500">
-                      <tr>
-                        <th className="text-right px-4 py-3 font-medium">לקוח</th>
-                        <th className="text-right px-4 py-3 font-medium">נשלח</th>
-                        <th className="text-center px-4 py-3 font-medium">פתח?</th>
-                        <th className="text-right px-4 py-3 font-medium">פתיחה ראשונה</th>
-                        <th className="text-center px-4 py-3 font-medium">כיסאות שצפה</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {analytics.campaignStats.map((stat) => (
-                        <tr key={stat.token} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-gray-900">{stat.customerName}</p>
-                            <p className="text-xs text-gray-400 font-mono" dir="ltr">{stat.phone}</p>
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">
-                            {new Date(stat.sentAt).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${stat.opened ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                              {stat.opened ? "✓" : "—"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">
-                            {stat.firstOpenedAt
-                              ? new Date(stat.firstOpenedAt).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`font-bold ${stat.chairsViewedCount > 0 ? "text-blue-700" : "text-gray-300"}`}>
-                              {stat.chairsViewedCount > 0 ? stat.chairsViewedCount : "—"}
-                            </span>
-                          </td>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-xs text-gray-500 border-b border-gray-100">
+                        <tr>
+                          <th className="text-right px-4 py-3 font-medium">לקוח</th>
+                          <th className="text-right px-4 py-3 font-medium">נשלח</th>
+                          <th className="text-center px-4 py-3 font-medium">סטטוס</th>
+                          <th className="text-right px-4 py-3 font-medium">נפתח ב</th>
+                          <th className="text-center px-4 py-3 font-medium">כיסאות</th>
+                          <th className="px-4 py-3" />
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {filtered.map((stat) => {
+                          const isNewOpen =
+                            stat.opened &&
+                            stat.firstOpenedAt &&
+                            now - new Date(stat.firstOpenedAt).getTime() < 24 * 60 * 60 * 1000;
+
+                          return (
+                            <tr key={stat.token} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div>
+                                    <p className="font-medium text-gray-900">{stat.customerName}</p>
+                                    <p className="text-xs text-gray-400 font-mono" dir="ltr">{stat.phone}</p>
+                                  </div>
+                                  {isNewOpen && (
+                                    <span className="shrink-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">חדש</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                {new Date(stat.sentAt).toLocaleDateString("he-IL", {
+                                  day: "2-digit", month: "2-digit", year: "2-digit",
+                                  hour: "2-digit", minute: "2-digit",
+                                })}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {stat.opened ? (
+                                  <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                                    ✅ נפתח
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-xs font-semibold px-2.5 py-1 rounded-full">
+                                    ⏳ טרם נפתח
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                {stat.firstOpenedAt
+                                  ? new Date(stat.firstOpenedAt).toLocaleDateString("he-IL", {
+                                      day: "2-digit", month: "2-digit",
+                                      hour: "2-digit", minute: "2-digit",
+                                    })
+                                  : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`font-bold text-sm ${stat.chairsViewedCount > 0 ? "text-blue-700" : "text-gray-300"}`}>
+                                  {stat.chairsViewedCount > 0 ? stat.chairsViewedCount : "—"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <button
+                                  onClick={async () => {
+                                    const res = await fetch("/api/campaigns/send", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        customerIds: [stat.customerId],
+                                        baseUrl: window.location.origin,
+                                      }),
+                                    });
+                                    const results = await res.json();
+                                    setSendResults(results);
+                                    refreshAnalytics();
+                                  }}
+                                  className="text-xs bg-green-50 hover:bg-green-100 text-green-700 font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                  שלח שוב
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
-        )}
+          );
+        })()}
       </main>
     </div>
   );
