@@ -729,6 +729,11 @@ export default function AdminClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, phone }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setErrorMsg(err.error ?? `שגיאה בשמירה (${res.status}) — נסה שוב`);
+      return;
+    }
     const customer = await res.json();
     setCustomers((prev) => [customer, ...prev]);
     setShowCustomerForm(false);
