@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Chair {
+  id          String       @id @default(cuid())
+  name        String
+  price       String
+  imageUrl    String
+  description String
+  details     String
+  order       Int
+  isVisible   Boolean      @default(true)
+  status      String       @default("")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  clicks      ChairClick[]
+}
+
+model CatalogView {
+  id        String   @id @default(cuid())
+  ip        String
+  device    String
+  userAgent String   @default("")
+  token     String?
+  timestamp DateTime @default(now())
+}
+
+model ChairClick {
+  id        String   @id @default(cuid())
+  chairId   String
+  chair     Chair    @relation(fields: [chairId], references: [id], onDelete: Cascade)
+  token     String?
+  timestamp DateTime @default(now())
+}
+
+model Customer {
+  id        Int            @id @default(autoincrement())
+  name      String
+  phone     String
+  createdAt DateTime       @default(now())
+  links     CampaignLink[]
+}
+
+model CampaignLink {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  token      String   @unique
+  sentAt     DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
