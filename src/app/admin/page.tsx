@@ -24,16 +24,29 @@ export default async function AdminPage() {
     prisma.catalogView.count(),
   ]);
 
-  const clickGroups = await prisma.chairClick.groupBy({
-    by: ["chairId"],
-    _count: { chairId: true },
-    orderBy: { _count: { chairId: "desc" } },
-    take: 5,
-  });
+  const [clickGroups, inquiryGroups] = await Promise.all([
+    prisma.chairClick.groupBy({
+      by: ["chairId"],
+      where: { type: "click" },
+      _count: { chairId: true },
+      orderBy: { _count: { chairId: "desc" } },
+      take: 5,
+    }),
+    prisma.chairClick.groupBy({
+      by: ["chairId"],
+      where: { type: "inquiry" },
+      _count: { chairId: true },
+      orderBy: { _count: { chairId: "desc" } },
+      take: 5,
+    }),
+  ]);
 
-  const chairIds = clickGroups.map((g) => g.chairId);
+  const allChairIds = Array.from(new Set([
+    ...clickGroups.map((g) => g.chairId),
+    ...inquiryGroups.map((g) => g.chairId),
+  ]));
   const chairNames = await prisma.chair.findMany({
-    where: { id: { in: chairIds } },
+    where: { id: { in: allChairIds } },
     select: { id: true, name: true },
   });
 
@@ -41,6 +54,12 @@ export default async function AdminPage() {
     chairId: g.chairId,
     name: chairNames.find((ch) => ch.id === g.chairId)?.name ?? "נמחק",
     clicks: g._count.chairId,
+  }));
+
+  const topInquiries = inquiryGroups.map((g) => ({
+    chairId: g.chairId,
+    name: chairNames.find((ch) => ch.id === g.chairId)?.name ?? "נמחק",
+    inquiries: g._count.chairId,
   }));
 
   const campaigns = await prisma.campaignLink.findMany({
@@ -86,6 +105,7 @@ export default async function AdminPage() {
         viewsMonth,
         totalViews,
         topChairs,
+        topInquiries,
         campaignStats,
         totalSent: campaigns.length,
         totalOpened: campaignStats.filter((s) => s.opened).length,

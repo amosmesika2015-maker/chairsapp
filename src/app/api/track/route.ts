@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
   if (body.type === "view") {
     await prisma.catalogView.create({ data: { ip, device, userAgent: ua, token } });
   } else if (body.type === "click" && body.chairId) {
-    await prisma.chairClick.create({ data: { chairId: body.chairId, token } });
+    await prisma.chairClick.create({ data: { chairId: body.chairId, token, type: "click" } });
+  } else if (body.type === "inquiry" && body.chairId) {
+    await prisma.chairClick.create({ data: { chairId: body.chairId, token, type: "inquiry" } });
   }
 
   return NextResponse.json({ ok: true });

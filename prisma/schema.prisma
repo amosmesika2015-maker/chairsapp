@@ -36,6 +36,7 @@ model ChairClick {
   chairId   String
   chair     Chair    @relation(fields: [chairId], references: [id], onDelete: Cascade)
   token     String?
+  type      String   @default("click")
   timestamp DateTime @default(now())
 }
 
