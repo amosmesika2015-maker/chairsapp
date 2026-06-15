@@ -50,15 +50,18 @@ export default async function AdminPage() {
 
   const campaignStats = await Promise.all(
     campaigns.map(async (link) => {
-      const views = await prisma.catalogView.findMany({
-        where: { token: link.token },
-        orderBy: { timestamp: "asc" },
-        take: 1,
-      });
-      const chairClicks = await prisma.chairClick.findMany({
-        where: { token: link.token },
-        select: { chairId: true },
-      });
+      const [openCount, firstView, chairClicks] = await Promise.all([
+        prisma.catalogView.count({ where: { token: link.token } }),
+        prisma.catalogView.findFirst({
+          where: { token: link.token },
+          orderBy: { timestamp: "asc" },
+          select: { timestamp: true },
+        }),
+        prisma.chairClick.findMany({
+          where: { token: link.token },
+          select: { chairId: true },
+        }),
+      ]);
       const uniqueChairs = Array.from(new Set(chairClicks.map((c) => c.chairId)));
       return {
         token: link.token,
@@ -66,9 +69,10 @@ export default async function AdminPage() {
         customerId: link.customer.id,
         customerName: link.customer.name,
         phone: link.customer.phone,
-        opened: views.length > 0,
-        firstOpenedAt: views[0]?.timestamp?.toISOString() ?? null,
+        opened: openCount > 0,
+        firstOpenedAt: firstView?.timestamp?.toISOString() ?? null,
         chairsViewedCount: uniqueChairs.length,
+        openCount,
       };
     })
   );

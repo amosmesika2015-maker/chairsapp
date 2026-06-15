@@ -49,6 +49,7 @@ type CampaignStat = {
   opened: boolean;
   firstOpenedAt: string | null;
   chairsViewedCount: number;
+  openCount: number;
 };
 
 type Analytics = {
@@ -1148,6 +1149,7 @@ export default function AdminClient({
                           <th className="text-right px-4 py-3 font-medium">לקוח</th>
                           <th className="text-right px-4 py-3 font-medium">נשלח</th>
                           <th className="text-center px-4 py-3 font-medium">סטטוס</th>
+                          <th className="text-center px-4 py-3 font-medium">פתיחות</th>
                           <th className="text-right px-4 py-3 font-medium">נפתח ב</th>
                           <th className="text-center px-4 py-3 font-medium">כיסאות</th>
                           <th className="px-4 py-3" />
@@ -1188,6 +1190,15 @@ export default function AdminClient({
                                   <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-xs font-semibold px-2.5 py-1 rounded-full">
                                     ⏳ טרם נפתח
                                   </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {stat.openCount === 0 ? (
+                                  <span className="text-gray-300">—</span>
+                                ) : stat.openCount === 1 ? (
+                                  <span className="text-gray-700 font-semibold">1</span>
+                                ) : (
+                                  <span className="font-bold text-orange-600">{stat.openCount} 🔁</span>
                                 )}
                               </td>
                               <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
