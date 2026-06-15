@@ -256,7 +256,7 @@ function ChairForm({
                   <p className="text-blue-500 text-sm py-4">מעלה תמונה...</p>
                 ) : form.imageUrl ? (
                   <div className="relative w-32 h-32 mx-auto">
-                    <Image src={form.imageUrl} alt="preview" fill className="object-contain rounded-xl" />
+                    <img src={form.imageUrl} alt="preview" className="w-full h-full object-contain rounded-xl" />
                   </div>
                 ) : (
                   <div className="py-6">

@@ -30,6 +30,16 @@ function WaIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+/* ─────────────────────────── helpers ───────────────────────────── */
+function trackInquiry(chairId: string) {
+  const token = new URLSearchParams(window.location.search).get("t") ?? undefined;
+  fetch("/api/track", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "inquiry", chairId, token }),
+  }).catch(() => {});
+}
+
 /* ─────────────────────────── Modal ─────────────────────────────── */
 function ChairModal({ chair, onClose }: { chair: Chair; onClose: () => void }) {
   useEffect(() => {
@@ -82,6 +92,7 @@ function ChairModal({ chair, onClose }: { chair: Chair; onClose: () => void }) {
                   fill
                   className="object-contain"
                   sizes="(max-width: 640px) 90vw, 280px"
+                  unoptimized={chair.imageUrl.startsWith('data:')}
                 />
               </div>
             </div>
@@ -124,6 +135,7 @@ function ChairModal({ chair, onClose }: { chair: Chair; onClose: () => void }) {
                   href={waLink(`שלום, אני מעוניין בדגם "${chair.name}". אשמח לקבל פרטים ומחיר.`)}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => trackInquiry(chair.id)}
                   className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2.5 transition-colors text-sm"
                 >
                   <WaIcon className="w-5 h-5" />
@@ -159,6 +171,7 @@ function ChairCard({ chair, onClick, index }: { chair: Chair; onClick: () => voi
           fill
           className="object-contain p-5 transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width:640px) 100vw,(max-width:1024px) 50vw,33vw"
+          unoptimized={chair.imageUrl.startsWith('data:')}
         />
         {/* Status badge */}
         {chair.status && STATUS_BADGE[chair.status] && (
@@ -194,7 +207,7 @@ function ChairCard({ chair, onClick, index }: { chair: Chair; onClick: () => voi
             href={waLink(`שלום, אני מעוניין בדגם "${chair.name}"`)}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); trackInquiry(chair.id); }}
             className="flex items-center justify-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors whitespace-nowrap"
           >
             <WaIcon className="w-4 h-4" />
@@ -219,7 +232,7 @@ function SpotlightCard({ chair, onDetails }: { chair: Chair; onDetails: () => vo
           </div>
         )}
         <div className="relative w-full max-w-[280px] aspect-square">
-          <Image src={chair.imageUrl} alt={chair.name} fill className="object-contain" sizes="280px" />
+          <Image src={chair.imageUrl} alt={chair.name} fill className="object-contain" sizes="280px" unoptimized={chair.imageUrl.startsWith('data:')} />
         </div>
       </div>
       <div className="p-8 flex flex-col justify-center gap-5">
@@ -245,6 +258,7 @@ function SpotlightCard({ chair, onDetails }: { chair: Chair; onDetails: () => vo
             href={waLink(`שלום, אני מעוניין בדגם "${chair.name}". אשמח לקבל פרטים.`)}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackInquiry(chair.id)}
             className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 px-5 rounded-xl transition-colors"
           >
             <WaIcon /> שאל בוואטסאפ
@@ -347,6 +361,7 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
                       fill
                       className="object-contain drop-shadow-2xl"
                       sizes="220px"
+                      unoptimized={chairs[0].imageUrl.startsWith('data:')}
                     />
                   </div>
 
