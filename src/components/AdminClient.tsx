@@ -140,13 +140,13 @@ function SortableChairCard({
           <p className="text-blue-700 font-bold text-sm">{chair.price}</p>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => onEdit(chair)} className="flex-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded-lg transition-colors">
+          <button onClick={() => onEdit(chair)} className="flex-1 text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 py-1.5 rounded-lg transition-colors">
             עריכה
           </button>
-          <button onClick={() => onToggleVisible(chair.id, !chair.isVisible)} className="flex-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 rounded-lg transition-colors">
+          <button onClick={() => onToggleVisible(chair.id, !chair.isVisible)} className="flex-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-700 py-1.5 rounded-lg transition-colors">
             {chair.isVisible ? "הסתר" : "הצג"}
           </button>
-          <button onClick={() => onDelete(chair.id)} className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg transition-colors">
+          <button onClick={() => onDelete(chair.id)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg transition-colors">
             🗑
           </button>
         </div>
