@@ -57,6 +57,7 @@ type Analytics = {
   viewsMonth: number;
   totalViews: number;
   topChairs: { chairId: string; name: string; clicks: number }[];
+  topInquiries: { chairId: string; name: string; inquiries: number }[];
   campaignStats: CampaignStat[];
   totalSent: number;
   totalOpened: number;
@@ -201,13 +202,13 @@ function ChairForm({
     setUploading(true);
     setUploadError("");
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!res.ok) throw new Error("שגיאה בהעלאה");
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setForm((f) => ({ ...f, imageUrl: data.url }));
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("שגיאה בקריאת הקובץ"));
+        reader.readAsDataURL(file);
+      });
+      setForm((f) => ({ ...f, imageUrl: base64 }));
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "שגיאה בהעלאת התמונה");
     } finally {
@@ -1046,6 +1047,31 @@ export default function AdminClient({
                         />
                       </div>
                       <span className="text-sm font-semibold text-gray-700 w-6 text-left">{c.clicks}</span>
+                      <span className="text-sm text-gray-600 flex-1 truncate">{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Top inquiries */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="font-semibold text-gray-900 mb-1">כיסאות הכי נשאלים בוואטסאפ</h3>
+              <p className="text-xs text-gray-400 mb-3">לחיצות על &quot;שאל בוואטסאפ&quot;</p>
+              {analytics.topInquiries.length === 0 ? (
+                <p className="text-gray-400 text-sm">אין נתונים עדיין</p>
+              ) : (
+                <div className="space-y-2">
+                  {analytics.topInquiries.map((c, i) => (
+                    <div key={c.chairId} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-400 w-5 text-center">{i + 1}</span>
+                      <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-green-500 h-2 rounded-full"
+                          style={{ width: `${(c.inquiries / (analytics.topInquiries[0]?.inquiries || 1)) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-700 w-6 text-left">{c.inquiries}</span>
                       <span className="text-sm text-gray-600 flex-1 truncate">{c.name}</span>
                     </div>
                   ))}
