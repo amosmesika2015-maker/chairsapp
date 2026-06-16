@@ -43,10 +43,22 @@ function trackInquiry(chairId: string) {
 /* ─────────────────────────── Modal ─────────────────────────────── */
 function ChairModal({ chair, onClose, dealerMode }: { chair: Chair; onClose: () => void; dealerMode: boolean }) {
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", h);
+    history.pushState({ modalOpen: true }, '');
+    let closedByBack = false;
+
+    const handlePop = () => { closedByBack = true; onClose(); };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+
+    window.addEventListener('popstate', handlePop);
+    document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", h); document.body.style.overflow = ""; };
+
+    return () => {
+      window.removeEventListener('popstate', handlePop);
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+      if (!closedByBack && history.state?.modalOpen) history.back();
+    };
   }, [onClose]);
 
   const detailLines = chair.details
