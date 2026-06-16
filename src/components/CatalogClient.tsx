@@ -41,7 +41,7 @@ function trackInquiry(chairId: string) {
 }
 
 /* ─────────────────────────── Modal ─────────────────────────────── */
-function ChairModal({ chair, onClose }: { chair: Chair; onClose: () => void }) {
+function ChairModal({ chair, onClose, dealerMode }: { chair: Chair; onClose: () => void; dealerMode: boolean }) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", h);
@@ -107,10 +107,12 @@ function ChairModal({ chair, onClose }: { chair: Chair; onClose: () => void }) {
               </div>
 
               {/* Price */}
+              {!dealerMode && (
               <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 inline-flex items-end gap-2 w-fit">
                 <span className="text-3xl font-black text-blue-700 leading-none">{chair.price}</span>
                 <span className="text-xs text-blue-400 mb-0.5">ש״ח + מע״מ</span>
               </div>
+              )}
 
               {/* Details list */}
               {detailLines.length > 0 && (
@@ -157,7 +159,7 @@ function ChairModal({ chair, onClose }: { chair: Chair; onClose: () => void }) {
 }
 
 /* ─────────────────────────── Chair Card ────────────────────────── */
-function ChairCard({ chair, onClick, index }: { chair: Chair; onClick: () => void; index: number }) {
+function ChairCard({ chair, onClick, index, dealerMode }: { chair: Chair; onClick: () => void; index: number; dealerMode: boolean }) {
   return (
     <article
       className="bg-white rounded-2xl overflow-hidden shadow-sm card-lift anim-fadeUp border border-slate-100/80 flex flex-col"
@@ -182,10 +184,12 @@ function ChairCard({ chair, onClick, index }: { chair: Chair; onClick: () => voi
           </div>
         )}
         {/* Price badge */}
+        {!dealerMode && (
         <div className="absolute bottom-3 left-3 bg-white rounded-xl shadow-md px-3 py-1.5">
           <p className="text-blue-700 font-black text-lg leading-none">{chair.price}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">ש״ח + מע״מ</p>
         </div>
+        )}
       </div>
 
       {/* Body */}
@@ -220,7 +224,7 @@ function ChairCard({ chair, onClick, index }: { chair: Chair; onClick: () => voi
 }
 
 /* ─────────────────────────── Spotlight (1-2 products) ──────────── */
-function SpotlightCard({ chair, onDetails }: { chair: Chair; onDetails: () => void }) {
+function SpotlightCard({ chair, onDetails, dealerMode }: { chair: Chair; onDetails: () => void; dealerMode: boolean }) {
   return (
     <div className="bg-white rounded-3xl shadow-lg overflow-hidden border border-slate-100 grid grid-cols-1 sm:grid-cols-2">
       <div className="bg-slate-50 flex items-center justify-center p-10 min-h-[260px] relative">
@@ -243,10 +247,12 @@ function SpotlightCard({ chair, onDetails }: { chair: Chair; onDetails: () => vo
             <p className="text-slate-500 mt-2 leading-relaxed">{chair.description}</p>
           )}
         </div>
+        {!dealerMode && (
         <div className="flex items-end gap-2">
           <span className="text-4xl font-black text-blue-700">{chair.price}</span>
           <span className="text-sm text-slate-400 mb-1">ש״ח + מע״מ</span>
         </div>
+        )}
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={onDetails}
@@ -273,6 +279,7 @@ function SpotlightCard({ chair, onDetails }: { chair: Chair; onDetails: () => vo
 export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
   const [selected, setSelected]     = useState<Chair | null>(null);
   const [search, setSearch]         = useState("");
+  const [dealerMode, setDealerMode] = useState(false);
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("t") ?? undefined;
@@ -311,6 +318,7 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
           </a>
 
           {/* Logo */}
+          {!dealerMode && (
           <Image
             src="/logo.png"
             alt="רהיטי עוצמה"
@@ -319,6 +327,7 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
             className="h-[88px] w-auto object-contain"
             onError={(e) => { (e.target as HTMLImageElement).style.display="none"; }}
           />
+          )}
         </div>
       </header>
 
@@ -332,10 +341,12 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
 
           {/* ── Text column (right in RTL) ── */}
           <div className="text-center lg:text-right order-2 lg:order-none anim-fadeUp">
+            {!dealerMode && (
             <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-blue-300 text-xs sm:text-sm font-medium mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />
               רהיטי עוצמה - קטלוג כיסאות
             </div>
+            )}
             <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black text-white leading-[1.1] mb-4 text-balance">
               ריהוט משרדי<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-l from-blue-300 to-blue-500">
@@ -425,14 +436,14 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
           /* ── Spotlight layout for 1-2 products ── */
           <div className="space-y-8">
             {filtered.map(chair => (
-              <SpotlightCard key={chair.id} chair={chair} onDetails={() => handleClick(chair)} />
+              <SpotlightCard key={chair.id} chair={chair} onDetails={() => handleClick(chair)} dealerMode={dealerMode} />
             ))}
           </div>
         ) : (
           /* ── Normal grid ── */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((chair, i) => (
-              <ChairCard key={chair.id} chair={chair} index={i} onClick={() => handleClick(chair)} />
+              <ChairCard key={chair.id} chair={chair} index={i} onClick={() => handleClick(chair)} dealerMode={dealerMode} />
             ))}
           </div>
         )}
@@ -495,6 +506,7 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
       {/* ════════════════ FOOTER ════════════════ */}
       <footer className="bg-[#060d1a] text-slate-500 py-10 px-4">
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-4 text-center">
+          {!dealerMode && (
           <Image
             src="/logo.png"
             alt="רהיטי עוצמה"
@@ -502,10 +514,23 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
             height={56}
             className="h-10 w-auto object-contain brightness-0 invert opacity-50"
           />
+          )}
           <p className="text-sm">ריהוט משרדי בהתאמה לעסקים, מוסדות ודילרים</p>
           <p className="text-xs text-slate-600">© {new Date().getFullYear()} רהיטי עוצמה — כל הזכויות שמורות</p>
         </div>
       </footer>
+
+      {/* ════════════════ DEALER MODE BUTTON ════════════════ */}
+      <button
+        onClick={() => setDealerMode(d => !d)}
+        className={`fixed bottom-24 left-5 z-40 px-4 py-2.5 rounded-full shadow-xl text-sm font-bold transition-all ${
+          dealerMode
+            ? "bg-amber-400 text-white shadow-amber-200"
+            : "bg-white text-slate-600 border border-slate-200 hover:border-amber-300 hover:text-amber-600"
+        }`}
+      >
+        {dealerMode ? "🔒 מצב סוכן פעיל" : "🏷️ מצב סוכן"}
+      </button>
 
       {/* ════════════════ FLOATING WA ════════════════ */}
       <a
@@ -519,7 +544,7 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
       </a>
 
       {/* ════════════════ MODAL ════════════════ */}
-      {selected && <ChairModal chair={selected} onClose={() => setSelected(null)} />}
+      {selected && <ChairModal chair={selected} onClose={() => setSelected(null)} dealerMode={dealerMode} />}
     </div>
   );
 }
