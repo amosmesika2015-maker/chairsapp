@@ -305,18 +305,6 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
       {/* ════════════════ NAVBAR ════════════════ */}
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          {/* WhatsApp CTA */}
-          <a
-            href={waLink()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
-          >
-            <WaIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">דברו איתנו</span>
-            <span className="sm:hidden">וואטסאפ</span>
-          </a>
-
           {/* Logo */}
           {!dealerMode && (
           <Image
@@ -482,27 +470,6 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
       </section>
 
       {/* ════════════════ BOTTOM CTA ════════════════ */}
-      <section className="bg-[#0b1628] relative overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute inset-0 bg-gradient-to-l from-blue-900/40 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 pointer-events-none"
-          style={{backgroundImage:`url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Ccircle cx='20' cy='20' r='1.2'/%3E%3C/g%3E%3C/svg%3E")`}}
-        />
-        <div className="relative max-w-3xl mx-auto px-4 py-12 text-center">
-          <h2 className="text-2xl sm:text-3xl font-black text-white mb-3">מוכנים להתחיל ?</h2>
-          <p className="text-slate-300 mb-8 text-base">לקבלת הצעת מחיר והזמנה לחצו על הכפתור</p>
-          <a
-            href={waLink("שלום, אני מעוניין לקבל הצעת מחיר על כיסאות משרדיים.")}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center w-16 h-16 bg-green-500 hover:bg-green-400 text-white rounded-full shadow-xl shadow-green-900/30 transition-all hover:scale-110 anim-waPulse"
-            aria-label="וואטסאפ"
-          >
-            <WaIcon className="w-8 h-8" />
-          </a>
-        </div>
-      </section>
-
       {/* ════════════════ FOOTER ════════════════ */}
       <footer className="bg-[#060d1a] text-slate-500 py-10 px-4">
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-4 text-center">
