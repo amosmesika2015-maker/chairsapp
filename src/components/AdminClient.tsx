@@ -640,7 +640,7 @@ export default function AdminClient({
   analytics: Analytics;
   customers: Customer[];
 }) {
-  const [activeTab, setActiveTab] = useState<"products" | "customers" | "dashboard" | "report">("dashboard");
+  const [activeTab, setActiveTab] = useState<"products" | "customers" | "dashboard" | "report" | "campaign">("dashboard");
 
   // Products state
   const [chairs, setChairs] = useState(initialChairs);
@@ -660,6 +660,33 @@ export default function AdminClient({
   // Analytics state
   const [analytics, setAnalytics] = useState(initialAnalytics);
 
+  // Campaign state
+  type CampaignData = {
+    id: number; title: string; description: string; images: string;
+    originalPrice: string; salePrice: string; whatsappMessage: string;
+    isOutOfStock: boolean; expiresAt: string | null; isActive: boolean;
+  };
+  type CampaignAnalyticRow = {
+    linkId: number; customerId: number; customerName: string; phone: string;
+    sentAt: string; openCount: number; firstOpenedAt: string | null; device: string | null;
+  };
+  type CampaignSendResult = {
+    customerId: number; customerName: string; phone: string;
+    token: string; campaignUrl: string; whatsappUrl: string;
+  };
+  const emptyCampaignForm = { title: "", description: "", originalPrice: "", salePrice: "", whatsappMessage: "", expiresAt: "" };
+  const [, setCampaigns] = useState<CampaignData[]>([]);
+  const [activeCampaign, setActiveCampaign] = useState<CampaignData | null>(null);
+  const [campaignForm, setCampaignForm] = useState(emptyCampaignForm);
+  const [campaignImages, setCampaignImages] = useState<string[]>([]);
+  const [campaignSaving, setCampaignSaving] = useState(false);
+  const [campaignSaveMsg, setCampaignSaveMsg] = useState("");
+  const [campaignAnalytics, setCampaignAnalytics] = useState<CampaignAnalyticRow[]>([]);
+  const [campaignSendResults, setCampaignSendResults] = useState<CampaignSendResult[] | null>(null);
+  const [campaignSelectedIds, setCampaignSelectedIds] = useState<Set<number>>(new Set());
+  const [campaignSending, setCampaignSending] = useState(false);
+  const [campaignImgUploading, setCampaignImgUploading] = useState(false);
+
   // Report tab state
   const [reportFilter, setReportFilter] = useState<"all" | "opened" | "not_opened">("all");
   const [reportSearch, setReportSearch] = useState("");
@@ -673,6 +700,31 @@ export default function AdminClient({
   useEffect(() => {
     if (activeTab === "dashboard" || activeTab === "report") refreshAnalytics();
   }, [activeTab, refreshAnalytics]);
+
+  // Load campaigns when switching to campaign tab
+  useEffect(() => {
+    if (activeTab !== "campaign") return;
+    fetch("/api/campaign").then(r => r.json()).then((data: CampaignData[]) => {
+      setCampaigns(data);
+      const active = data.find(c => c.isActive) ?? null;
+      setActiveCampaign(active);
+      if (active) {
+        setCampaignForm({
+          title: active.title, description: active.description,
+          originalPrice: active.originalPrice, salePrice: active.salePrice,
+          whatsappMessage: active.whatsappMessage,
+          expiresAt: active.expiresAt ? active.expiresAt.slice(0, 10) : "",
+        });
+        setCampaignImages(JSON.parse(active.images || "[]"));
+        fetch(`/api/campaign/${active.id}/analytics`).then(r => r.json()).then(setCampaignAnalytics);
+      } else {
+        setCampaignForm(emptyCampaignForm);
+        setCampaignImages([]);
+        setCampaignAnalytics([]);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // ── DnD sensors ──
   const sensors = useSensors(
@@ -814,8 +866,92 @@ export default function AdminClient({
     { key: "dashboard" as const, label: "דשבורד", icon: "📊" },
     { key: "products" as const, label: "מוצרים", icon: "🪑" },
     { key: "customers" as const, label: "לקוחות", icon: "👥" },
+    { key: "campaign" as const, label: "קמפיין", icon: "🎯" },
     { key: "report" as const, label: "דוח שליחה", icon: "📋" },
   ];
+
+  const uploadCampaignImage = async (file: File) => {
+    setCampaignImgUploading(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("שגיאה בקריאת הקובץ"));
+        reader.onload = (e) => {
+          const img = new window.Image();
+          img.onerror = () => reject(new Error("שגיאה בטעינת תמונה"));
+          img.onload = () => {
+            const MAX = 800;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", 0.82));
+          };
+          img.src = e.target!.result as string;
+        };
+        reader.readAsDataURL(file);
+      });
+      setCampaignImages((prev) => [...prev, base64]);
+    } finally {
+      setCampaignImgUploading(false);
+    }
+  };
+
+  const saveCampaign = async () => {
+    setCampaignSaving(true);
+    setCampaignSaveMsg("");
+    try {
+      const payload = {
+        ...campaignForm,
+        images: campaignImages,
+        expiresAt: campaignForm.expiresAt || null,
+      };
+      let saved: CampaignData;
+      if (activeCampaign) {
+        const r = await fetch(`/api/campaign/${activeCampaign.id}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        saved = await r.json();
+      } else {
+        const r = await fetch("/api/campaign", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        saved = await r.json();
+      }
+      setActiveCampaign(saved);
+      setCampaignSaveMsg("נשמר בהצלחה ✓");
+      setTimeout(() => setCampaignSaveMsg(""), 3000);
+    } finally {
+      setCampaignSaving(false);
+    }
+  };
+
+  const toggleCampaignOutOfStock = async () => {
+    if (!activeCampaign) return;
+    const updated = { ...activeCampaign, isOutOfStock: !activeCampaign.isOutOfStock };
+    await fetch(`/api/campaign/${activeCampaign.id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isOutOfStock: updated.isOutOfStock }),
+    });
+    setActiveCampaign(updated);
+  };
+
+  const sendCampaign = async () => {
+    if (!activeCampaign || campaignSelectedIds.size === 0) return;
+    setCampaignSending(true);
+    const r = await fetch(`/api/campaign/${activeCampaign.id}/send`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customerIds: Array.from(campaignSelectedIds), baseUrl: getSiteUrl() }),
+    });
+    const results = await r.json();
+    setCampaignSendResults(results);
+    setCampaignSelectedIds(new Set());
+    setCampaignSending(false);
+    fetch(`/api/campaign/${activeCampaign.id}/analytics`).then(r => r.json()).then(setCampaignAnalytics);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex" dir="rtl">
@@ -825,6 +961,9 @@ export default function AdminClient({
       {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onCancel={() => setShowCustomerForm(false)} />}
       {editingCustomer && <CustomerForm initial={editingCustomer} onSave={handleEditCustomer} onCancel={() => setEditingCustomer(null)} />}
       {sendResults && <SendPanel results={sendResults} onClose={() => setSendResults(null)} />}
+      {campaignSendResults && (
+        <CampaignSendPanel results={campaignSendResults} onClose={() => setCampaignSendResults(null)} />
+      )}
       {showBulkImport && (
         <BulkImportPanel
           onDone={(newCustomers) => {
@@ -1285,7 +1424,282 @@ export default function AdminClient({
             </div>
           );
         })()}
+
+        {/* ── TAB: CAMPAIGN ── */}
+        {activeTab === "campaign" && (
+          <div className="space-y-6 max-w-2xl">
+            <h2 className="font-semibold text-gray-900">ניהול קמפיין</h2>
+
+            {/* Form */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">כותרת המוצר</label>
+                  <input
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={campaignForm.title}
+                    onChange={e => setCampaignForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="שם המוצר בקמפיין"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">תיאור קצר</label>
+                  <textarea
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    rows={2}
+                    value={campaignForm.description}
+                    onChange={e => setCampaignForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="תיאור קצר של המוצר"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">מחיר מקורי</label>
+                  <input
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={campaignForm.originalPrice}
+                    onChange={e => setCampaignForm(f => ({ ...f, originalPrice: e.target.value }))}
+                    placeholder="₪1,200"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">מחיר מבצע</label>
+                  <input
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={campaignForm.salePrice}
+                    onChange={e => setCampaignForm(f => ({ ...f, salePrice: e.target.value }))}
+                    placeholder="₪899"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">הודעת WhatsApp</label>
+                  <textarea
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    rows={3}
+                    value={campaignForm.whatsappMessage}
+                    onChange={e => setCampaignForm(f => ({ ...f, whatsappMessage: e.target.value }))}
+                    placeholder={`שלום! 👋\nיש לנו מבצע מיוחד עבורך:`}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">תאריך תפוגה (אופציונלי)</label>
+                  <input
+                    type="date"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    value={campaignForm.expiresAt}
+                    onChange={e => setCampaignForm(f => ({ ...f, expiresAt: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Image gallery upload */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-2">תמונות ({campaignImages.length})</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {campaignImages.map((img, i) => (
+                    <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 group">
+                      <Image src={img} alt="" fill className="object-cover" sizes="64px" />
+                      <button
+                        onClick={() => setCampaignImages(prev => prev.filter((_, j) => j !== i))}
+                        className="absolute inset-0 bg-black/50 text-white text-xs opacity-0 group-hover:opacity-100 transition flex items-center justify-center"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <label className={`w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition text-gray-400 text-2xl ${campaignImgUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                    {campaignImgUploading ? "..." : "+"}
+                    <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (file) { e.target.value = ""; await uploadCampaignImage(file); }
+                    }} />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={saveCampaign}
+                  disabled={campaignSaving || !campaignForm.title}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition"
+                >
+                  {campaignSaving ? "שומר..." : activeCampaign ? "עדכן קמפיין" : "צור קמפיין"}
+                </button>
+                {activeCampaign && (
+                  <button
+                    onClick={toggleCampaignOutOfStock}
+                    className={`px-5 py-2.5 rounded-xl font-semibold text-sm border transition ${
+                      activeCampaign.isOutOfStock
+                        ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+                        : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {activeCampaign.isOutOfStock ? "✓ אזל מהמלאי" : "סמן כאזל מהמלאי"}
+                  </button>
+                )}
+                {campaignSaveMsg && <span className="text-green-600 text-sm font-medium">{campaignSaveMsg}</span>}
+                {activeCampaign && (
+                  <a
+                    href={`/campaign/${activeCampaign.id}`}
+                    target="_blank"
+                    className="text-xs text-blue-600 hover:underline mr-auto"
+                  >
+                    צפה בקמפיין ↗
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Send campaign */}
+            {activeCampaign && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">שלח קמפיין ללקוחות</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <button
+                    onClick={() => {
+                      if (campaignSelectedIds.size === customers.length) {
+                        setCampaignSelectedIds(new Set());
+                      } else {
+                        setCampaignSelectedIds(new Set(customers.map(c => c.id)));
+                      }
+                    }}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    {campaignSelectedIds.size === customers.length ? "בטל הכל" : "בחר הכל"}
+                  </button>
+                  <span className="text-xs text-gray-400">·</span>
+                  <span className="text-xs text-gray-500">{campaignSelectedIds.size} נבחרו</span>
+                </div>
+                <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50 mb-4">
+                  {customers.map(c => (
+                    <label key={c.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={campaignSelectedIds.has(c.id)}
+                        onChange={() => {
+                          setCampaignSelectedIds(prev => {
+                            const n = new Set(prev);
+                            if (n.has(c.id)) { n.delete(c.id); } else { n.add(c.id); }
+                            return n;
+                          });
+                        }}
+                        className="rounded"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                        <p className="text-xs text-gray-400 font-mono" dir="ltr">{c.phone}</p>
+                      </div>
+                    </label>
+                  ))}
+                  {customers.length === 0 && (
+                    <div className="text-center py-8 text-gray-400 text-sm">אין לקוחות</div>
+                  )}
+                </div>
+                <button
+                  onClick={sendCampaign}
+                  disabled={campaignSending || campaignSelectedIds.size === 0}
+                  className="bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition flex items-center gap-2"
+                >
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  {campaignSending ? "שולח..." : `שלח קמפיין (${campaignSelectedIds.size})`}
+                </button>
+              </div>
+            )}
+
+            {/* Campaign analytics */}
+            {activeCampaign && campaignAnalytics.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-50">
+                  <h3 className="font-semibold text-gray-900">מי פתח את הקמפיין</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-500 text-xs">
+                      <tr>
+                        <th className="text-right px-4 py-3 font-medium">לקוח</th>
+                        <th className="text-right px-4 py-3 font-medium">נשלח</th>
+                        <th className="text-center px-4 py-3 font-medium">סטטוס</th>
+                        <th className="text-center px-4 py-3 font-medium">פתיחות</th>
+                        <th className="text-right px-4 py-3 font-medium">נפתח לראשונה</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {campaignAnalytics.map(row => (
+                        <tr key={row.linkId} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-gray-900">{row.customerName}</p>
+                            <p className="text-xs text-gray-400 font-mono" dir="ltr">{row.phone}</p>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                            {new Date(row.sentAt).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {row.openCount > 0 ? (
+                              <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">✅ נפתח</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-500 text-xs font-semibold px-2.5 py-1 rounded-full">⏳ טרם נפתח</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {row.openCount === 0 ? <span className="text-gray-300">—</span> : <span className="font-bold text-gray-700">{row.openCount}</span>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                            {row.firstOpenedAt ? new Date(row.firstOpenedAt).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeCampaign && campaignAnalytics.length === 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">
+                טרם נשלחו קישורים לקמפיין זה
+              </div>
+            )}
+          </div>
+        )}
       </main>
+    </div>
+  );
+}
+
+// ─── CampaignSendPanel ───────────────────────────────────────────────────────
+function CampaignSendPanel({ results, onClose }: { results: { customerName: string; phone: string; campaignUrl: string; whatsappUrl: string }[]; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">שלח קמפיין ללקוחות</h2>
+            <p className="text-sm text-gray-500">{results.length} קישורים מוכנים</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">✕</button>
+        </div>
+        <div className="overflow-y-auto p-4 space-y-3">
+          {results.map(r => (
+            <div key={r.phone} className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl">
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-sm">{r.customerName}</p>
+                <p className="text-xs text-gray-400 font-mono truncate" dir="ltr">{r.campaignUrl}</p>
+              </div>
+              <a
+                href={r.whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 bg-[#25D366] hover:bg-[#1ebe5d] text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5"
+              >
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                שלח
+              </a>
+            </div>
+          ))}
+        </div>
+        <div className="p-4 border-t border-gray-100">
+          <button onClick={onClose} className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm transition">סגור</button>
+        </div>
+      </div>
     </div>
   );
 }
