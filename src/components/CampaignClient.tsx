@@ -73,7 +73,7 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
   )}`;
 
   return (
-    <div dir="rtl" className="min-h-screen font-[Rubik,sans-serif] relative" style={{ background: "#FAF8F4" }}>
+    <div dir="rtl" className="min-h-screen font-[Rubik,sans-serif] relative" style={{ background: "#F0EDE8" }}>
 
       {/* Expired overlay */}
       {isExpired && (
@@ -91,75 +91,100 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
         </div>
       )}
 
-      <div className="max-w-md mx-auto pb-28">
-
-        {/* Logo */}
-        <div className="flex justify-center pt-8 pb-4 px-6">
-          <Image
-            src="/logo.png"
-            alt="רהיטי עוצמה"
-            width={140}
-            height={56}
-            className="h-12 w-auto object-contain"
-            priority
-          />
-        </div>
-
-        {/* Product image — hero */}
-        {images.length > 0 && (
-          <div className="relative" style={{ background: "#FAF8F4" }}>
-            <div className="relative w-full" style={{ height: "62vw", maxHeight: "400px", minHeight: "260px" }}>
-              <Image
-                src={images[currentImg]}
-                alt={campaign.title}
-                fill
-                className="object-contain"
-                sizes="(max-width: 512px) 100vw, 448px"
-                priority
-              />
-            </div>
-
-            {/* Gallery nav dots */}
-            {images.length > 1 && (
-              <div className="flex justify-center gap-2 pb-3 pt-1">
-                {images.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentImg(i)}
-                    className="h-1 rounded-full transition-all"
-                    style={{
-                      width: i === currentImg ? "28px" : "8px",
-                      background: i === currentImg ? "#C9A84C" : "#d1d5db",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+      {/* Card with border frame */}
+      <div className="max-w-md mx-auto pb-28" style={{ padding: "12px" }}>
+        <div
+          className="rounded-3xl overflow-hidden"
+          style={{
+            background: "#FAF8F4",
+            border: "1.5px solid rgba(201,168,76,0.4)",
+            boxShadow: "0 2px 24px rgba(0,0,0,0.10), inset 0 0 0 1px rgba(255,255,255,0.6)",
+          }}
+        >
+          {/* Logo */}
+          <div className="flex justify-center pt-8 pb-4 px-6">
+            <Image
+              src="/logo.png"
+              alt="רהיטי עוצמה"
+              width={280}
+              height={112}
+              className="h-24 w-auto object-contain"
+              priority
+            />
           </div>
-        )}
 
-        {/* Gold divider */}
-        <div className="mx-6 my-5 flex items-center gap-3">
-          <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A84C, transparent)" }} />
-        </div>
+          {/* Product image — hero */}
+          {images.length > 0 && (
+            <div className="relative" style={{ background: "#FAF8F4" }}>
 
-        {/* Text content */}
-        <div className="px-6">
-          {/* Headline */}
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight mb-3 text-center">
-            {campaign.title}
-          </h1>
+              {/* Circular badge מבצע החודש */}
+              <div
+                className="absolute top-3 left-3 z-10 flex flex-col items-center justify-center text-center select-none"
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  border: "2.5px solid #C9A84C",
+                  background: "white",
+                  color: "#C9A84C",
+                  transform: "rotate(-12deg)",
+                  boxShadow: "0 2px 12px rgba(201,168,76,0.25)",
+                }}
+              >
+                <div style={{ fontSize: "11px", fontWeight: 900, lineHeight: 1.2 }}>מבצע</div>
+                <div style={{ fontSize: "11px", fontWeight: 900, lineHeight: 1.2 }}>החודש</div>
+              </div>
 
-          {/* Description */}
-          {campaign.description && (
-            <p className="text-gray-500 text-sm leading-relaxed text-center mb-6 max-w-xs mx-auto">
-              {campaign.description}
-            </p>
+              <div className="relative w-full" style={{ height: "62vw", maxHeight: "400px", minHeight: "260px" }}>
+                <Image
+                  src={images[currentImg]}
+                  alt={campaign.title}
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 512px) 100vw, 448px"
+                  priority
+                />
+              </div>
+
+              {/* Gallery nav dots */}
+              {images.length > 1 && (
+                <div className="flex justify-center gap-2 pb-3 pt-1">
+                  {images.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentImg(i)}
+                      className="h-1 rounded-full transition-all"
+                      style={{
+                        width: i === currentImg ? "28px" : "8px",
+                        background: i === currentImg ? "#C9A84C" : "#d1d5db",
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
-          {/* Price */}
-          <div className="mb-6">
-            <PriceDisplay original={campaign.originalPrice} sale={campaign.salePrice} />
+          {/* Gold divider */}
+          <div className="mx-6 my-5">
+            <div className="h-px" style={{ background: "linear-gradient(90deg, transparent, #C9A84C, transparent)" }} />
+          </div>
+
+          {/* Text content */}
+          <div className="px-6 pb-8">
+            <h1 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight mb-3 text-center">
+              {campaign.title}
+            </h1>
+
+            {campaign.description && (
+              <p className="text-gray-500 text-sm leading-relaxed text-center mb-6 max-w-xs mx-auto">
+                {campaign.description}
+              </p>
+            )}
+
+            <div className="mb-2">
+              <PriceDisplay original={campaign.originalPrice} sale={campaign.salePrice} />
+            </div>
           </div>
         </div>
       </div>
@@ -167,7 +192,7 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
       {/* Sticky CTA */}
       <div
         className="fixed bottom-0 left-0 right-0 z-40 px-5 pb-5 pt-4"
-        style={{ background: "linear-gradient(to top, #FAF8F4 65%, transparent)" }}
+        style={{ background: "linear-gradient(to top, #F0EDE8 65%, transparent)" }}
       >
         <div className="max-w-md mx-auto">
           {campaign.isOutOfStock ? (
