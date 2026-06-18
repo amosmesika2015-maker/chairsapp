@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   const campaigns = await prisma.campaign.findMany({
     orderBy: { createdAt: "desc" },
+    include: { _count: { select: { links: true } } },
   });
   return NextResponse.json(campaigns);
 }
