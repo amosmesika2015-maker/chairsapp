@@ -119,20 +119,20 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
 
               {/* Circular badge מבצע החודש */}
               <div
-                className="absolute top-3 left-3 z-10 flex flex-col items-center justify-center text-center select-none"
+                className="absolute top-3 right-3 z-10 flex flex-col items-center justify-center text-center select-none"
                 style={{
                   width: "80px",
                   height: "80px",
                   borderRadius: "50%",
                   border: "2.5px solid #C9A84C",
                   background: "white",
-                  color: "#C9A84C",
-                  transform: "rotate(-12deg)",
+                  color: "#1a1a1a",
+                  transform: "rotate(12deg)",
                   boxShadow: "0 2px 12px rgba(201,168,76,0.25)",
                 }}
               >
-                <div style={{ fontSize: "11px", fontWeight: 900, lineHeight: 1.2 }}>מבצע</div>
-                <div style={{ fontSize: "11px", fontWeight: 900, lineHeight: 1.2 }}>החודש</div>
+                <div style={{ fontSize: "16px", fontWeight: 900, lineHeight: 1.2 }}>מבצע</div>
+                <div style={{ fontSize: "16px", fontWeight: 900, lineHeight: 1.2 }}>החודש</div>
               </div>
 
               <div className="relative w-full" style={{ height: "62vw", maxHeight: "400px", minHeight: "260px" }}>
