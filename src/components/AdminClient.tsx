@@ -817,9 +817,12 @@ export default function AdminClient({
     if (res.ok) setAnalytics(await res.json());
   }, []);
 
-  // Refresh analytics when switching to dashboard or report
+  // Refresh analytics when switching to dashboard or report, then every 30s
   useEffect(() => {
-    if (activeTab === "dashboard" || activeTab === "report") refreshAnalytics();
+    if (activeTab !== "dashboard" && activeTab !== "report") return;
+    refreshAnalytics();
+    const interval = setInterval(refreshAnalytics, 30_000);
+    return () => clearInterval(interval);
   }, [activeTab, refreshAnalytics]);
 
   const refreshCampaignList = () =>
