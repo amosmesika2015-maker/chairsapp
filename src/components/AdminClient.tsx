@@ -499,6 +499,59 @@ function SendPanel({ results, onClose }: { results: SendResult[]; onClose: () =>
 
 // ─── BulkImportPanel ─────────────────────────────────────────────────────────
 
+function parseCsv(raw: string): string {
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return raw;
+
+  const parseRow = (line: string) => {
+    const cols: string[] = [];
+    let cur = "", inQuote = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuote = !inQuote; }
+      else if (ch === "," && !inQuote) { cols.push(cur.trim()); cur = ""; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    return cols;
+  };
+
+  const headers = parseRow(lines[0]).map((h) => h.toLowerCase().replace(/^"|"$/g, ""));
+
+  // Find best name column
+  const nameIdx = (() => {
+    const exact = headers.indexOf("name");
+    if (exact !== -1) return exact;
+    const given = headers.findIndex((h) => h.includes("given name") || h === "first name");
+    if (given !== -1) return given;
+    return headers.findIndex((h) => h.includes("name"));
+  })();
+
+  // Find best phone column — prefer "phone 1 - value" or "mobile"
+  const phoneIdx = (() => {
+    const p1 = headers.findIndex((h) => h.includes("phone 1 - value"));
+    if (p1 !== -1) return p1;
+    const mob = headers.findIndex((h) => h.includes("mobile"));
+    if (mob !== -1) return mob;
+    return headers.findIndex((h) => h.includes("phone"));
+  })();
+
+  // Fallback: no recognised headers → treat col 0 = name, col 1 = phone
+  const ni = nameIdx !== -1 ? nameIdx : 0;
+  const pi = phoneIdx !== -1 ? phoneIdx : 1;
+
+  return lines
+    .slice(1)
+    .map((line) => {
+      const cols = parseRow(line);
+      const name = (cols[ni] ?? "").replace(/^"|"$/g, "").trim();
+      const phone = (cols[pi] ?? "").replace(/^"|"$/g, "").replace(/[\s\-()]/g, "").trim();
+      if (!name || !phone) return null;
+      return `${name}, ${phone}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 function BulkImportPanel({
   onDone,
   onCancel,
@@ -509,6 +562,19 @@ function BulkImportPanel({
   const [text, setText] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ created: number; failed: number } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const raw = ev.target?.result as string;
+      setText(parseCsv(raw));
+    };
+    reader.readAsText(file, "utf-8");
+    e.target.value = "";
+  };
 
   const preview = text
     .split("\n")
@@ -552,12 +618,31 @@ function BulkImportPanel({
       <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">ייבוא לקוחות בכמות</h2>
-          <p className="text-sm text-gray-500 mt-1">הדבק רשימה — שם ומספר טלפון בכל שורה</p>
+          <p className="text-sm text-gray-500 mt-1">העלה קובץ CSV או הדבק רשימה ידנית</p>
         </div>
 
         <div className="p-6 flex flex-col gap-4 flex-1 overflow-auto">
           {!result ? (
             <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleCsvFile}
+              />
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50 rounded-xl py-4 text-sm text-gray-500 hover:text-blue-600 font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="text-lg">📎</span>
+                העלה קובץ CSV (מ-Google Contacts / Excel)
+              </button>
+              <div className="flex items-center gap-3 text-xs text-gray-400">
+                <div className="flex-1 h-px bg-gray-100" />
+                או הדבק ידנית
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
