@@ -515,36 +515,39 @@ function parseCsv(raw: string): string {
     return cols;
   };
 
-  const headers = parseRow(lines[0]).map((h) => h.toLowerCase().replace(/^"|"$/g, ""));
+  const headers = parseRow(lines[0]).map((h) => h.toLowerCase().replace(/^"|"$/g, "").trim());
 
-  // Find best name column
-  const nameIdx = (() => {
-    const exact = headers.indexOf("name");
-    if (exact !== -1) return exact;
-    const given = headers.findIndex((h) => h.includes("given name") || h === "first name");
-    if (given !== -1) return given;
-    return headers.findIndex((h) => h.includes("name"));
-  })();
+  // Name columns
+  const fullNameIdx   = headers.indexOf("name");
+  const givenNameIdx  = headers.findIndex((h) => h === "given name" || h === "first name");
+  const familyNameIdx = headers.findIndex((h) => h === "family name" || h === "last name");
+  const fallbackNameIdx = headers.findIndex((h) => h.includes("name"));
 
-  // Find best phone column — prefer "phone 1 - value" or "mobile"
+  const getName = (cols: string[]) => {
+    const clean = (i: number) => (cols[i] ?? "").replace(/^"|"$/g, "").trim();
+    if (fullNameIdx !== -1 && clean(fullNameIdx)) return clean(fullNameIdx);
+    const given  = givenNameIdx  !== -1 ? clean(givenNameIdx)  : "";
+    const family = familyNameIdx !== -1 ? clean(familyNameIdx) : "";
+    if (given || family) return [given, family].filter(Boolean).join(" ");
+    return fallbackNameIdx !== -1 ? clean(fallbackNameIdx) : clean(0);
+  };
+
+  // Phone column — prefer "phone 1 - value", then "mobile", then any "phone"
   const phoneIdx = (() => {
     const p1 = headers.findIndex((h) => h.includes("phone 1 - value"));
     if (p1 !== -1) return p1;
     const mob = headers.findIndex((h) => h.includes("mobile"));
     if (mob !== -1) return mob;
-    return headers.findIndex((h) => h.includes("phone"));
+    const ph = headers.findIndex((h) => h.includes("phone"));
+    return ph !== -1 ? ph : 1;
   })();
-
-  // Fallback: no recognised headers → treat col 0 = name, col 1 = phone
-  const ni = nameIdx !== -1 ? nameIdx : 0;
-  const pi = phoneIdx !== -1 ? phoneIdx : 1;
 
   return lines
     .slice(1)
     .map((line) => {
       const cols = parseRow(line);
-      const name = (cols[ni] ?? "").replace(/^"|"$/g, "").trim();
-      const phone = (cols[pi] ?? "").replace(/^"|"$/g, "").replace(/[\s\-()]/g, "").trim();
+      const name = getName(cols);
+      const phone = (cols[phoneIdx] ?? "").replace(/^"|"$/g, "").replace(/[\s\-()+ ]/g, "").trim();
       if (!name || !phone) return null;
       return `${name}, ${phone}`;
     })
