@@ -31,25 +31,49 @@ function PriceDisplay({ original, sale }: { original: string; sale: string }) {
   const pct = o && sv && o > sv ? Math.round(((o - sv) / o) * 100) : null;
 
   return (
-    <div className="flex items-end gap-4 justify-center">
-      <div className="text-center">
-        <div className="text-xs text-gray-400 mb-0.5 tracking-wide">מחיר מקורי</div>
-        <div className="text-xl text-gray-400 line-through font-light">{original}</div>
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ border: "1px solid rgba(201,168,76,0.3)", background: "rgba(201,168,76,0.05)" }}
+    >
+      {/* Original price row */}
+      <div
+        className="flex items-center justify-center gap-2 px-5 py-3"
+        style={{ borderBottom: "1px solid rgba(201,168,76,0.15)" }}
+      >
+        <span className="text-gray-400 text-sm">מחיר מקורי:</span>
+        <span className="text-gray-400 text-base line-through font-light">{original}</span>
+        <span className="text-gray-400 text-xs">ש&quot;ח</span>
       </div>
-      <div className="text-gray-300 text-2xl mb-1">·</div>
-      <div className="text-center">
-        <div className="text-xs tracking-widest font-semibold mb-0.5" style={{ color: "#C9A84C" }}>מחיר מבצע</div>
-        <div className="text-4xl font-black text-gray-900 leading-none">{sale}</div>
-      </div>
-      {pct && (
-        <div
-          className="text-center mb-1 px-2.5 py-1 rounded-lg text-xs font-bold text-white"
-          style={{ background: "#C9A84C" }}
-        >
-          <div>חסכת</div>
-          <div className="text-base leading-none">{pct}%</div>
+
+      {/* Sale price row */}
+      <div className="flex items-center justify-between px-5 py-4 gap-3">
+        <div>
+          <div className="text-xs font-semibold mb-1 tracking-widest" style={{ color: "#C9A84C" }}>
+            מחיר מבצע
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-5xl font-black text-gray-900 leading-none">{sale}</span>
+            <span className="text-sm font-medium text-gray-500 leading-tight">
+              ש&quot;ח<br />+ מע&quot;מ
+            </span>
+          </div>
         </div>
-      )}
+
+        {pct && (
+          <div
+            className="flex flex-col items-center justify-center rounded-2xl shrink-0"
+            style={{
+              width: "72px",
+              height: "72px",
+              background: "linear-gradient(135deg, #C9A84C, #e8c96a)",
+              boxShadow: "0 4px 14px rgba(201,168,76,0.35)",
+            }}
+          >
+            <div className="text-white text-xs font-bold">חסכת</div>
+            <div className="text-white text-2xl font-black leading-none">{pct}%</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
