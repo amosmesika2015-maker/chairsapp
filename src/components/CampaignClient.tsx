@@ -116,7 +116,7 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
       )}
 
       {/* Card with border frame */}
-      <div className="max-w-md mx-auto" style={{ padding: "12px", paddingBottom: "120px" }}>
+      <div className="max-w-md mx-auto px-3 pt-3" style={{ paddingBottom: "180px" }}>
         <div
           className="rounded-3xl overflow-hidden"
           style={{
@@ -206,7 +206,7 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
               </p>
             )}
 
-            <div className="mb-2">
+            <div>
               <PriceDisplay original={campaign.originalPrice} sale={campaign.salePrice} />
             </div>
           </div>
