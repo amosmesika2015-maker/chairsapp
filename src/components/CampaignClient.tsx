@@ -53,9 +53,7 @@ function PriceDisplay({ original, sale }: { original: string; sale: string }) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-5xl font-black text-gray-900 leading-none">{sale}</span>
-            <span className="text-sm font-medium text-gray-500 leading-tight">
-              ש&quot;ח<br />+ מע&quot;מ
-            </span>
+            <span className="text-sm font-medium text-gray-500">ש&quot;ח + מע&quot;מ</span>
           </div>
         </div>
 
