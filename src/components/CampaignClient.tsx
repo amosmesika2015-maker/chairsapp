@@ -116,7 +116,7 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
       )}
 
       {/* Card with border frame */}
-      <div className="max-w-md mx-auto pb-28" style={{ padding: "12px" }}>
+      <div className="max-w-md mx-auto" style={{ padding: "12px", paddingBottom: "120px" }}>
         <div
           className="rounded-3xl overflow-hidden"
           style={{
