@@ -1234,7 +1234,7 @@ export default function AdminClient({
                   {customers.map((customer, i) => (
                     <div
                       key={customer.id}
-                      className={`flex items-center gap-3 px-4 py-3 ${i < customers.length - 1 ? "border-b border-gray-50" : ""} ${selectedIds.has(customer.id) ? "bg-blue-50" : "hover:bg-gray-50"} transition-colors`}
+                      className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${i < customers.length - 1 ? "border-b border-gray-100" : ""} ${selectedIds.has(customer.id) ? "bg-blue-50" : "hover:bg-amber-50"} transition-colors`}
                     >
                       <input
                         type="checkbox"
