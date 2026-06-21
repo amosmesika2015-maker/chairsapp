@@ -29,8 +29,9 @@ export async function POST(req: Request) {
     });
 
     const catalogUrl = `${baseUrl}?t=${token}`;
+    const firstName = customer.name.split(" ")[0];
     const message = encodeURIComponent(
-      `שלום ${customer.name}! 👋\n\nהכנו עבורך קטלוג הכיסאות שלנו:\n🔗 ${catalogUrl}\n\nצפה בכיסאות ואם יש שאלות אנחנו כאן!`
+      `שלום ${firstName}! 👋\n\nשמחים לשתף אותך בקטלוג הכיסאות החדש שלנו.\n\n🔗 ${catalogUrl}\n\nמעניין אותך משהו ספציפי? נשמח לעזור!\nתודה,\nא.ס רהיטי עוצמה בע"מ`
     );
     const whatsappUrl = `https://wa.me/${customer.phone}?text=${message}`;
 
