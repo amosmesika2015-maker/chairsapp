@@ -206,42 +206,37 @@ export default function CampaignClient({ campaign }: { campaign: Campaign }) {
               </p>
             )}
 
-            <div>
+            <div className="mt-6">
               <PriceDisplay original={campaign.originalPrice} sale={campaign.salePrice} />
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Sticky CTA */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 px-5 pb-5 pt-4"
-        style={{ background: "linear-gradient(to top, #F0EDE8 65%, transparent)" }}
-      >
-        <div className="max-w-md mx-auto">
-          {campaign.isOutOfStock ? (
-            <button
-              disabled
-              className="w-full py-4 rounded-2xl font-semibold text-base text-gray-400 cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ background: "#e5e7eb" }}
-            >
-              אזל מהמלאי
-            </button>
-          ) : (
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-4 rounded-2xl font-bold text-lg text-white flex items-center justify-center gap-2.5 transition active:scale-95"
-              style={{
-                background: "#25D366",
-                boxShadow: "0 8px 24px rgba(37,211,102,0.3)",
-              }}
-            >
-              <WaIcon className="w-6 h-6" />
-              צור קשר עכשיו
-            </a>
-          )}
+            {/* WhatsApp CTA — inside card */}
+            <div className="mt-6">
+              {campaign.isOutOfStock ? (
+                <button
+                  disabled
+                  className="w-full py-4 rounded-2xl font-semibold text-base text-gray-400 cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ background: "#e5e7eb" }}
+                >
+                  אזל מהמלאי
+                </button>
+              ) : (
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-4 rounded-2xl font-bold text-lg text-white flex items-center justify-center gap-2.5 transition active:scale-95"
+                  style={{
+                    background: "#25D366",
+                    boxShadow: "0 8px 24px rgba(37,211,102,0.3)",
+                  }}
+                >
+                  <WaIcon className="w-6 h-6" />
+                  צור קשר עכשיו
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
