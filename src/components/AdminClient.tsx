@@ -562,6 +562,7 @@ function BulkImportPanel({
   const [text, setText] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ created: number; failed: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -633,10 +634,25 @@ function BulkImportPanel({
               />
               <button
                 onClick={() => fileRef.current?.click()}
-                className="w-full border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50 rounded-xl py-4 text-sm text-gray-500 hover:text-blue-600 font-medium transition-colors flex items-center justify-center gap-2"
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  const file = e.dataTransfer.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => setText(parseCsv(ev.target?.result as string));
+                  reader.readAsText(file, "utf-8");
+                }}
+                className={`w-full border-2 border-dashed rounded-xl py-5 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  dragging
+                    ? "border-blue-500 bg-blue-50 text-blue-600"
+                    : "border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-500 hover:text-blue-600"
+                }`}
               >
-                <span className="text-lg">📎</span>
-                העלה קובץ CSV (מ-Google Contacts / Excel)
+                <span className="text-lg">{dragging ? "📂" : "📎"}</span>
+                {dragging ? "שחרר כאן" : "גרור קובץ CSV לכאן — או לחץ לבחירה"}
               </button>
               <div className="flex items-center gap-3 text-xs text-gray-400">
                 <div className="flex-1 h-px bg-gray-100" />
