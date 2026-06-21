@@ -935,8 +935,8 @@ export default function AdminClient({
     setEditingCustomer(null);
   };
 
-  const handleDeleteCustomer = async (id: number) => {
-    if (!window.confirm("למחוק את הלקוח?")) return;
+  const handleDeleteCustomer = async (id: number, name: string) => {
+    if (!window.confirm(`למחוק את ${name}?`)) return;
     await fetch(`/api/customers/${id}`, { method: "DELETE" });
     setCustomers((prev) => prev.filter((c) => c.id !== id));
     setSelectedIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
@@ -1254,7 +1254,7 @@ export default function AdminClient({
                           עריכה
                         </button>
                         <button
-                          onClick={() => handleDeleteCustomer(customer.id)}
+                          onClick={() => handleDeleteCustomer(customer.id, customer.name)}
                           className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg transition-colors"
                         >
                           🗑
