@@ -88,8 +88,10 @@ export async function GET() {
     })
   );
 
-  const totalSent = campaigns.length;
-  const totalOpened = campaignStats.filter((s) => s.opened).length;
+  const totalSent = new Set(campaigns.map((c) => c.customer.id)).size;
+  const totalOpened = new Set(
+    campaignStats.filter((s) => s.opened).map((s) => s.customerId)
+  ).size;
 
   return NextResponse.json({
     viewsWeek,

@@ -1290,7 +1290,7 @@ export default function AdminClient({
               {[
                 { label: "כיסאות בקטלוג", value: chairs.length, color: "text-blue-700" },
                 { label: "לקוחות", value: customers.length, color: "text-purple-700" },
-                { label: "קישורים נשלחו", value: analytics.totalSent, color: "text-orange-600" },
+                { label: "קיבלו קטלוג", value: analytics.totalSent, color: "text-orange-600" },
                 {
                   label: "פתחו קישור",
                   value: analytics.totalSent > 0

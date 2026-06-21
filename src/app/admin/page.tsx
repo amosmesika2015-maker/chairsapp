@@ -107,8 +107,8 @@ export default async function AdminPage() {
         topChairs,
         topInquiries,
         campaignStats,
-        totalSent: campaigns.length,
-        totalOpened: campaignStats.filter((s) => s.opened).length,
+        totalSent: new Set(campaigns.map((c) => c.customer.id)).size,
+        totalOpened: new Set(campaignStats.filter((s) => s.opened).map((s) => s.customerId)).size,
       }}
     />
   );
