@@ -456,6 +456,8 @@ function CustomerForm({
 // ─── SendPanel ────────────────────────────────────────────────────────────────
 
 function SendPanel({ results, onClose }: { results: SendResult[]; onClose: () => void }) {
+  const [remaining, setRemaining] = useState(results);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl">
@@ -463,29 +465,41 @@ function SendPanel({ results, onClose }: { results: SendResult[]; onClose: () =>
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900">שלח קטלוג ללקוחות</h2>
-              <p className="text-sm text-gray-500">{results.length} קישורים מוכנים</p>
+              <p className="text-sm text-gray-500">
+                {remaining.length > 0
+                  ? `נותרו ${remaining.length} מתוך ${results.length}`
+                  : `✅ נשלח לכל ${results.length} הלקוחות`}
+              </p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
           </div>
 
           <div className="space-y-3">
-            {results.map((r) => (
-              <div key={r.token} className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm">{r.customerName}</p>
-                  <p className="text-xs text-gray-400 font-mono" dir="ltr">{r.phone}</p>
-                  <p className="text-xs text-blue-500 mt-1 truncate" dir="ltr">{r.catalogUrl}</p>
-                </div>
-                <a
-                  href={r.whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1"
-                >
-                  <span>📱</span> שלח
-                </a>
+            {remaining.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-4xl mb-3">🎉</p>
+                <p className="text-gray-500 text-sm">כל הקישורים נשלחו בהצלחה!</p>
               </div>
-            ))}
+            ) : (
+              remaining.map((r) => (
+                <div key={r.token} className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm">{r.customerName}</p>
+                    <p className="text-xs text-gray-400 font-mono" dir="ltr">{r.phone}</p>
+                    <p className="text-xs text-blue-500 mt-1 truncate" dir="ltr">{r.catalogUrl}</p>
+                  </div>
+                  <a
+                    href={r.whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setRemaining((prev) => prev.filter((x) => x.token !== r.token))}
+                    className="shrink-0 bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-1"
+                  >
+                    <span>📱</span> שלח
+                  </a>
+                </div>
+              ))
+            )}
           </div>
 
           <p className="text-xs text-gray-400 text-center mt-4">
