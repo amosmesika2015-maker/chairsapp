@@ -9,10 +9,14 @@ const WA_BASE   = `https://wa.me/${WA_NUMBER}`;
 const waLink    = (msg?: string) => msg ? `${WA_BASE}?text=${encodeURIComponent(msg)}` : WA_BASE;
 
 /* ─────────────────────────── types ─────────────────────────────── */
+type Category = { id: string; name: string; slug: string; order: number };
+
 type Chair = {
   id: string; name: string; price: string;
   imageUrl: string; description: string; details: string;
-  status: string;
+  status: string; sku?: string | null;
+  categoryId?: string | null;
+  category?: Category | null;
 };
 
 const STATUS_BADGE: Record<string, { color: string; label: string }> = {
@@ -113,13 +117,16 @@ function ChairModal({ chair, onClose, dealerMode }: { chair: Chair; onClose: () 
             <div className="p-6 flex flex-col gap-5">
               <div>
                 <h2 className="text-2xl font-black text-slate-900 leading-tight">{chair.name}</h2>
+                {chair.sku && (
+                  <p className="text-xs text-slate-400 mt-1 font-mono">מקט: {chair.sku}</p>
+                )}
                 {chair.description && (
                   <p className="text-slate-500 text-sm mt-2 leading-relaxed">{chair.description}</p>
                 )}
               </div>
 
               {/* Price */}
-              {!dealerMode && (
+              {!dealerMode && chair.price && (
               <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 inline-flex items-end gap-2 w-fit">
                 <span className="text-3xl font-black text-blue-700 leading-none">{chair.price}</span>
                 <span className="text-xs text-blue-400 mb-0.5">ש״ח + מע״מ</span>
@@ -196,7 +203,7 @@ function ChairCard({ chair, onClick, index, dealerMode }: { chair: Chair; onClic
           </div>
         )}
         {/* Price badge */}
-        {!dealerMode && (
+        {!dealerMode && chair.price && (
         <div className="absolute bottom-3 left-3 bg-white rounded-xl shadow-md px-3 py-1.5">
           <p className="text-blue-700 font-black text-lg leading-none">{chair.price}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">ש״ח + מע״מ</p>
@@ -289,9 +296,10 @@ function SpotlightCard({ chair, onDetails, dealerMode }: { chair: Chair; onDetai
 
 /* ─────────────────────────── Main Page ─────────────────────────── */
 export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
-  const [selected, setSelected]     = useState<Chair | null>(null);
-  const [search, setSearch]         = useState("");
-  const [dealerMode, setDealerMode] = useState(false);
+  const [selected, setSelected]         = useState<Chair | null>(null);
+  const [search, setSearch]             = useState("");
+  const [dealerMode, setDealerMode]     = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("t") ?? undefined;
@@ -304,12 +312,27 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
     fetch("/api/track", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({type:"click", chairId: chair.id, token}) }).catch(()=>{});
   };
 
+  // Derive ordered unique categories from visible chairs
+  const categories = Array.from(
+    chairs
+      .filter(c => c.category)
+      .reduce((map, c) => {
+        if (c.category && !map.has(c.category.id)) map.set(c.category.id, c.category);
+        return map;
+      }, new Map<string, Category>())
+      .values()
+  ).sort((a, b) => a.order - b.order);
+
+  const showTabs = categories.length > 1;
+
   const filtered = chairs.filter(c => {
     const q = search.toLowerCase();
-    return !q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
+    const matchSearch = !q || c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
+    const matchCat = activeCategory === "all" || c.categoryId === activeCategory;
+    return matchSearch && matchCat;
   });
 
-  const isSparse = chairs.length > 0 && chairs.length <= 2;
+  const isSparse = filtered.length > 0 && filtered.length <= 2;
 
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">
@@ -391,10 +414,10 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
       <section id="catalog" className="max-w-6xl mx-auto px-4 py-14">
 
         {/* Section heading */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
           <div>
             <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">הקטלוג שלנו</p>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">דגמי הכיסאות</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">כל הדגמים</h2>
           </div>
 
           {/* Search */}
@@ -409,6 +432,35 @@ export default function CatalogClient({ chairs }: { chairs: Chair[] }) {
             />
           </div>
         </div>
+
+        {/* Category tabs */}
+        {showTabs && (
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-8 scrollbar-hide">
+            <button
+              onClick={() => setActiveCategory("all")}
+              className={`shrink-0 px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                activeCategory === "all"
+                  ? "bg-blue-700 text-white shadow-md"
+                  : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-600"
+              }`}
+            >
+              הכל
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`shrink-0 px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                  activeCategory === cat.id
+                    ? "bg-blue-700 text-white shadow-md"
+                    : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-600"
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* States */}
         {chairs.length === 0 ? (

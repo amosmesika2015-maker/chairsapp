@@ -7,6 +7,7 @@ export default async function CatalogPage() {
   const chairs = await prisma.chair.findMany({
     where: { isVisible: true },
     orderBy: { order: "asc" },
+    include: { category: true },
   });
 
   return <CatalogClient chairs={chairs} />;

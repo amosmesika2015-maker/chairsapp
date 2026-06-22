@@ -21,6 +21,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+type Category = { id: string; name: string; slug: string; order: number };
+
 type Chair = {
   id: string;
   name: string;
@@ -31,6 +33,9 @@ type Chair = {
   order: number;
   isVisible: boolean;
   status: string;
+  sku?: string | null;
+  categoryId?: string | null;
+  category?: Category | null;
 };
 
 type Customer = {
@@ -136,8 +141,12 @@ function SortableChairCard({
       </div>
       <div className="p-3 flex flex-col gap-2">
         <div>
+          {chair.category && (
+            <p className="text-[10px] text-purple-600 font-semibold mb-0.5">{chair.category.name}</p>
+          )}
           <p className="font-semibold text-gray-900 text-sm line-clamp-1">{chair.name}</p>
-          <p className="text-blue-700 font-bold text-sm">{chair.price}</p>
+          {chair.sku && <p className="text-[10px] text-gray-400 font-mono">מקט: {chair.sku}</p>}
+          {chair.price && <p className="text-blue-700 font-bold text-sm">{chair.price}</p>}
         </div>
         <div className="flex gap-1">
           <button onClick={() => onEdit(chair)} className="flex-1 text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 py-1.5 rounded-lg transition-colors">
@@ -159,10 +168,12 @@ function SortableChairCard({
 
 function ChairForm({
   initial,
+  categories,
   onSave,
   onCancel,
 }: {
   initial?: Chair;
+  categories: Category[];
   onSave: (data: Partial<Chair>) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -174,6 +185,8 @@ function ChairForm({
     details: initial?.details ?? "",
     imageUrl: initial?.imageUrl ?? "",
     status: initial?.status ?? "",
+    sku: initial?.sku ?? "",
+    categoryId: initial?.categoryId ?? "",
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -284,10 +297,11 @@ function ChairForm({
             </div>
 
             {[
-              { key: "name", label: "שם הכיסא", placeholder: "כיסא מנהלים דגם X" },
-              { key: "price", label: "מחיר", placeholder: "₪1,200 | לפי בקשה" },
-              { key: "description", label: "תיאור קצר (על הכרטיס)", placeholder: "כיסא ארגונומי..." },
-            ].map(({ key, label, placeholder }) => (
+              { key: "name", label: "שם המוצר", placeholder: "כיסא מנהלים דגם X", required: true },
+              { key: "price", label: "מחיר (השאר ריק אם אין)", placeholder: "₪1,200 | לפי בקשה", required: false },
+              { key: "sku", label: "מקט / מספר דגם", placeholder: "4000", required: false },
+              { key: "description", label: "תיאור קצר (על הכרטיס)", placeholder: "כיסא ארגונומי...", required: false },
+            ].map(({ key, label, placeholder, required }) => (
               <div key={key}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
                 <input
@@ -296,10 +310,26 @@ function ChairForm({
                   onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder={placeholder}
-                  required={key !== "description"}
+                  required={required}
                 />
               </div>
             ))}
+
+            {categories.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">קטגוריה</label>
+                <select
+                  value={form.categoryId}
+                  onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— ללא קטגוריה —</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">סטטוס מלאי</label>
@@ -747,18 +777,147 @@ function BulkImportPanel({
   );
 }
 
+// ─── AdminProductsTab ────────────────────────────────────────────────────────
+
+function AdminProductsTab({
+  chairs, categories, onAdd, onEdit, onDelete, onToggleVisible, sensors, handleDragEnd,
+}: {
+  chairs: Chair[];
+  categories: Category[];
+  onAdd: () => void;
+  onEdit: (c: Chair) => void;
+  onDelete: (id: string) => void;
+  onToggleVisible: (id: string, v: boolean) => void;
+  sensors: ReturnType<typeof useSensors>;
+  handleDragEnd: (event: DragEndEvent) => void;
+}) {
+  const [activeCat, setActiveCat] = useState<string>("all");
+
+  // Categories that actually have chairs
+  const usedCats = categories.filter(cat => chairs.some(c => c.categoryId === cat.id));
+  const uncategorized = chairs.filter(c => !c.categoryId);
+  const showTabs = usedCats.length > 0;
+
+  const filtered = activeCat === "all"
+    ? chairs
+    : activeCat === "none"
+      ? uncategorized
+      : chairs.filter(c => c.categoryId === activeCat);
+
+  const visibleCount = filtered.filter(c => c.isVisible).length;
+  const hiddenCount  = filtered.filter(c => !c.isVisible).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-gray-900">
+          מוצרים בקטלוג ({filtered.length})
+          {hiddenCount > 0 && (
+            <span className="mr-2 text-xs text-amber-600 font-medium">· {hiddenCount} draft</span>
+          )}
+        </h2>
+        <button
+          onClick={onAdd}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+        >
+          + הוסף מוצר
+        </button>
+      </div>
+
+      {/* Category tabs */}
+      {showTabs && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => setActiveCat("all")}
+            className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              activeCat === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            הכל ({chairs.length})
+          </button>
+          {usedCats.map(cat => {
+            const count = chairs.filter(c => c.categoryId === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCat(cat.id)}
+                className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  activeCat === cat.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {cat.name} ({count})
+              </button>
+            );
+          })}
+          {uncategorized.length > 0 && (
+            <button
+              onClick={() => setActiveCat("none")}
+              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                activeCat === "none" ? "bg-gray-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              ללא קטגוריה ({uncategorized.length})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Stats strip */}
+      {filtered.length > 0 && (
+        <div className="flex gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" />{visibleCount} גלוי</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />{hiddenCount} draft</span>
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
+          <p className="text-4xl mb-3">📦</p>
+          <p className="text-gray-500 mb-4">אין מוצרים בקטגוריה זו</p>
+          <button onClick={onAdd} className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-semibold">
+            הוסף מוצר
+          </button>
+        </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filtered.map((c) => c.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filtered.map((chair) => (
+                <SortableChairCard
+                  key={chair.id}
+                  chair={chair}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onToggleVisible={onToggleVisible}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+      <p className="text-center text-gray-400 text-xs pb-4">גרור מוצרים לשינוי סדר הצגה בקטלוג</p>
+    </div>
+  );
+}
+
 // ─── AdminClient ──────────────────────────────────────────────────────────────
 
 export default function AdminClient({
   chairs: initialChairs,
   analytics: initialAnalytics,
   customers: initialCustomers,
+  categories: initialCategories,
 }: {
   chairs: Chair[];
   analytics: Analytics;
   customers: Customer[];
+  categories: Category[];
 }) {
   const [activeTab, setActiveTab] = useState<"products" | "customers" | "dashboard" | "report" | "campaign">("dashboard");
+
+  // Categories
+  const [categories] = useState(initialCategories);
 
   // Products state
   const [chairs, setChairs] = useState(initialChairs);
@@ -1096,8 +1255,8 @@ export default function AdminClient({
   return (
     <div className="min-h-screen bg-gray-50 flex" dir="rtl">
       {errorMsg && <ErrorDialog message={errorMsg} onClose={() => setErrorMsg(null)} />}
-      {showForm && <ChairForm onSave={handleAdd} onCancel={() => setShowForm(false)} />}
-      {editingChair && <ChairForm initial={editingChair} onSave={(data) => handleEdit(data)} onCancel={() => setEditingChair(null)} />}
+      {showForm && <ChairForm categories={categories} onSave={handleAdd} onCancel={() => setShowForm(false)} />}
+      {editingChair && <ChairForm initial={editingChair} categories={categories} onSave={(data) => handleEdit(data)} onCancel={() => setEditingChair(null)} />}
       {showCustomerForm && <CustomerForm onSave={handleAddCustomer} onCancel={() => setShowCustomerForm(false)} />}
       {editingCustomer && <CustomerForm initial={editingCustomer} onSave={handleEditCustomer} onCancel={() => setEditingCustomer(null)} />}
       {sendResults && <SendPanel results={sendResults} onClose={() => setSendResults(null)} />}
@@ -1149,44 +1308,16 @@ export default function AdminClient({
 
         {/* ── TAB: PRODUCTS ── */}
         {activeTab === "products" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">כיסאות בקטלוג ({chairs.length})</h2>
-              <button
-                onClick={() => setShowForm(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
-              >
-                + הוסף כיסא
-              </button>
-            </div>
-
-            {chairs.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
-                <p className="text-4xl mb-3">🪑</p>
-                <p className="text-gray-500 mb-4">אין כיסאות עדיין</p>
-                <button onClick={() => setShowForm(true)} className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-semibold">
-                  הוסף את הראשון
-                </button>
-              </div>
-            ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={chairs.map((c) => c.id)} strategy={rectSortingStrategy}>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {chairs.map((chair) => (
-                      <SortableChairCard
-                        key={chair.id}
-                        chair={chair}
-                        onEdit={(c) => setEditingChair(c)}
-                        onDelete={handleDelete}
-                        onToggleVisible={handleToggleVisible}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            )}
-            <p className="text-center text-gray-400 text-xs pb-4">גרור כיסאות לשינוי סדר הצגה בקטלוג</p>
-          </div>
+          <AdminProductsTab
+            chairs={chairs}
+            categories={categories}
+            onAdd={() => setShowForm(true)}
+            onEdit={(c) => setEditingChair(c)}
+            onDelete={handleDelete}
+            onToggleVisible={handleToggleVisible}
+            sensors={sensors}
+            handleDragEnd={handleDragEnd}
+          />
         )}
 
         {/* ── TAB: CUSTOMERS ── */}

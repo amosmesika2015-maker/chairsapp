@@ -9,7 +9,7 @@ export async function PUT(
 ) {
   try {
     const body = await req.json();
-    const allowed = ["name", "price", "imageUrl", "description", "details", "order", "isVisible", "status"];
+    const allowed = ["name", "price", "imageUrl", "description", "details", "order", "isVisible", "status", "sku", "categoryId"];
     const data = Object.fromEntries(
       Object.entries(body).filter(([k, v]) => allowed.includes(k) && v !== undefined)
     );

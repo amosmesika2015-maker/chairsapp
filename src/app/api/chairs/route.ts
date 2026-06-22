@@ -18,11 +18,13 @@ export async function POST(req: NextRequest) {
   const chair = await prisma.chair.create({
     data: {
       name: body.name,
-      price: body.price,
+      price: body.price ?? "",
       imageUrl: body.imageUrl,
-      description: body.description,
+      description: body.description ?? "",
       details: body.details ?? "",
-      status:  body.status  ?? "",
+      status: body.status ?? "",
+      sku: body.sku || null,
+      categoryId: body.categoryId || null,
       order: nextOrder,
     },
   });

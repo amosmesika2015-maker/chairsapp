@@ -9,9 +9,10 @@ export default async function AdminPage() {
   const session = await auth();
   if (!session) redirect("/admin/login");
 
-  const [chairs, customers] = await Promise.all([
-    prisma.chair.findMany({ orderBy: { order: "asc" } }),
+  const [chairs, customers, categories] = await Promise.all([
+    prisma.chair.findMany({ orderBy: { order: "asc" }, include: { category: true } }),
     prisma.customer.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.category.findMany({ orderBy: { order: "asc" } }),
   ]);
 
   const now = new Date();
@@ -99,6 +100,7 @@ export default async function AdminPage() {
   return (
     <AdminClient
       chairs={chairs}
+      categories={categories}
       customers={customers.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() }))}
       analytics={{
         viewsWeek,
